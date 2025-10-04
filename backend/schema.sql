@@ -25,7 +25,6 @@ CREATE TABLE users (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
--- expenses table
 CREATE TABLE expenses (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     employee_id UUID NOT NULL REFERENCES users(id),
@@ -38,3 +37,12 @@ CREATE TABLE expenses (
     receipt_url VARCHAR(255),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+SELECT id, full_name, email FROM users;
+
+UPDATE users 
+SET manager_id = '23c5bee2-6404-422d-9130-114eca595cc7' 
+WHERE id = '0c56cf02-8441-431b-8ce1-7838b4a3bcd3';
+
+ALTER TABLE expenses
+ADD COLUMN comments TEXT;
