@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import authRoutes from './routes/auth.js';
 import expenseRoutes from './routes/expenses.js';
+import approvalRoutes from './routes/approvals.js';
 
 dotenv.config();
 
@@ -16,6 +17,7 @@ app.use(express.json());
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/expenses', expenseRoutes);
+app.use('/api/approvals', approvalRoutes);
 
 // Basic test route
 app.get('/', (req, res) => {
