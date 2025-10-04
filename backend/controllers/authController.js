@@ -1,6 +1,8 @@
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import db from '../db.js';
+import crypto from 'crypto';
+import { createTestTransporter } from '../utils/mailer.js';
 
 // Controller for the Signup logic
 const signup = async (req, res) => {
@@ -75,4 +77,83 @@ const login = async (req, res) => {
   }
 };
 
-export { signup, login };
+const forgotPassword = async (req, res) => {
+  const { email } = req.body;
+  
+  try {
+    const userResult = await db.query('SELECT * FROM users WHERE email = $1', [email]);
+    if (userResult.rows.length === 0) {
+      // IMPORTANT: Don't reveal that the user doesn't exist.
+      return res.status(200).json({ message: 'If an account with that email exists, a password reset link has been sent.' });
+    }
+    const user = userResult.rows[0];
+
+    // 1. Generate a random reset token
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+
+    // 2. Set token expiry (e.g., 1 hour)
+    const passwordResetExpires = new Date(Date.now() + 3600000); // 1 hour from now
+
+    // 3. Save the hashed token and expiry date to the database
+    await db.query(
+      'UPDATE users SET password_reset_token = $1, password_reset_expires = $2 WHERE id = $3',
+      [hashedToken, passwordResetExpires, user.id]
+    );
+
+    // 4. Send the email
+    const resetUrl = `http://localhost:5173/reset-password/${resetToken}`;
+    const message = `You are receiving this email because you (or someone else) have requested the reset of a password. Please click on the following link, or paste this into your browser to complete the process within one hour of receiving it:\n\n${resetUrl}`;
+    
+    const transporter = await createTestTransporter();
+    await transporter.sendMail({
+      from: '"ExpenseManager" <noreply@expensemanager.com>',
+      to: user.email,
+      subject: 'Password Reset Request',
+      text: message,
+    });
+
+    res.status(200).json({ message: 'If an account with that email exists, a password reset link has been sent.' });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({ message: 'Server error.' });
+  }
+};
+
+const resetPassword = async (req, res) => {
+  const { token } = req.params;
+  const { password } = req.body;
+
+  // 1. Hash the incoming token
+  const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+  try {
+    // 2. Find the user by the hashed token and check expiry date
+    const userResult = await db.query(
+      'SELECT * FROM users WHERE password_reset_token = $1 AND password_reset_expires > NOW()',
+      [hashedToken]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(400).json({ message: 'Password reset token is invalid or has expired.' });
+    }
+    const user = userResult.rows[0];
+
+    // 3. Hash the new password
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(password, salt);
+
+    // 4. Update the user's password and clear the reset token fields
+    await db.query(
+      'UPDATE users SET password_hash = $1, password_reset_token = NULL, password_reset_expires = NULL WHERE id = $2',
+      [passwordHash, user.id]
+    );
+
+    res.status(200).json({ message: 'Password has been reset successfully.' });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({ message: 'Server error.' });
+  }
+};
+
+export { signup, login, forgotPassword, resetPassword };

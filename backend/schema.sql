@@ -46,3 +46,7 @@ WHERE id = '0c56cf02-8441-431b-8ce1-7838b4a3bcd3';
 
 ALTER TABLE expenses
 ADD COLUMN comments TEXT;
+
+ALTER TABLE users
+ADD COLUMN password_reset_token VARCHAR(255),
+ADD COLUMN password_reset_expires TIMESTAMP WITH TIME ZONE;
