@@ -24,3 +24,17 @@ CREATE TABLE users (
     manager_id UUID REFERENCES users(id), -- Self-referencing key
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
+
+-- expenses table
+CREATE TABLE expenses (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    employee_id UUID NOT NULL REFERENCES users(id),
+    amount DECIMAL(10, 2) NOT NULL,
+    currency VARCHAR(3) NOT NULL,
+    category VARCHAR(255) NOT NULL,
+    description TEXT,
+    expense_date DATE NOT NULL,
+    status expense_status NOT NULL DEFAULT 'PENDING',
+    receipt_url VARCHAR(255),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
